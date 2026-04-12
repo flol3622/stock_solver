@@ -8,7 +8,9 @@ Minimise bar purchase cost by packing required structural parts into available s
 
 ### Using the hosted app
 
-Open the app at your Streamlit Cloud URL and follow these steps:
+Open **[stocksolver-1d.streamlit.app](https://stocksolver-1d.streamlit.app/)** — no installation required.
+
+Follow these steps:
 
 1. **Available Stock** table — enter the bar types you can buy: name, cross-section dimensions (`l1` and `l2` in mm), bar length, and cost per bar. Add or remove rows freely.
 2. **Required Parts** table — enter each part type: name, profile (chosen from a dropdown that reflects your stock table), length in mm, and how many pieces you need.
@@ -54,8 +56,8 @@ stock_solver/
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/stock-solver
-cd stock-solver
+git clone https://github.com/flol3622/stock_solver
+cd stock_solver
 uv run streamlit run app.py
 ```
 
@@ -64,18 +66,19 @@ uv run streamlit run app.py
 ### One-liner from GitHub (no clone)
 
 ```bash
-uvx --from "git+https://github.com/YOUR_USERNAME/stock-solver" \
-    --with streamlit --with ortools --with matplotlib --with pandas \
-    streamlit run https://raw.githubusercontent.com/YOUR_USERNAME/stock-solver/main/app.py
+uvx --from git+https://github.com/flol3622/stock_solver stock-solver
 ```
 
-> **Note:** This one-liner only works if `app.py` imports are resolvable. For multi-module projects like this one, a full clone + `uv run` is the recommended approach.
+`uvx` installs the package (and all dependencies) into a temporary isolated environment, then launches the app — no clone, no manual install needed.
 
 ### Deploy on Streamlit Cloud
 
-1. Push the repository to GitHub (all files including `pyproject.toml`).
+Deployed at [stocksolver-1d.streamlit.app](https://stocksolver-1d.streamlit.app/) from the `main` branch of [github.com/flol3622/stock_solver](https://github.com/flol3622/stock_solver).
+
+To redeploy from your own fork:
+1. Fork the repository on GitHub.
 2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
-3. Select your repository, branch `main`, and set **Main file path** to `app.py`.
+3. Select your fork, branch `main`, and set **Main file path** to `app.py`.
 4. Click **Deploy**. Streamlit Cloud reads `pyproject.toml` to install dependencies automatically.
 
 ### Add / update dependencies
