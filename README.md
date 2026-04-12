@@ -1,31 +1,52 @@
-# 1D Stock Cutting Optimiser
+# ✂️ 1D Stock Cutting Optimiser
 
-Minimise bar purchase cost by packing required structural parts into available stock bars. Profile compatibility is enforced exactly (`l1 × l2`). Powered by **Google OR-Tools CP-SAT**.
+> Pack required structural parts into stock bars at minimum cost.
+> Profile matching is exact (`l1 × l2`). Powered by **Google OR-Tools CP-SAT**.
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://stocksolver-1d.streamlit.app/)
 
 ---
 
-## For Users
+## 🚀 Getting Started
 
-### Using the hosted app
+### Option A — Hosted app *(no install)*
 
-Open **[stocksolver-1d.streamlit.app](https://stocksolver-1d.streamlit.app/)** — no installation required.
+**→ [stocksolver-1d.streamlit.app](https://stocksolver-1d.streamlit.app/)**
 
-Follow these steps:
+Open in your browser and start optimising immediately.
 
-1. **Available Stock** table — enter the bar types you can buy: name, cross-section dimensions (`l1` and `l2` in mm), bar length, and cost per bar. Add or remove rows freely.
-2. **Required Parts** table — enter each part type: name, profile (chosen from a dropdown that reflects your stock table), length in mm, and how many pieces you need.
-3. **Load / Save** — expand this section to:
-   - **Download** your current inputs as a single CSV file for later reuse.
-   - **Upload** a previously saved CSV, choosing whether to *replace* the tables entirely or *add* the rows to what is already there.
-4. Press **▶ Optimise**.
-5. Review the KPI summary, cutting plan table, and the Gantt-style chart.
-6. Download individual profile charts as **vector PDF** for workshop use.
+### Option B — Run locally *(one command)*
 
-### CSV format
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) — a fast Python package manager (~10 s install).
 
-The combined CSV uses a `section` column to tag rows as `stock` or `part`:
-
+```bash
+uvx --from git+https://github.com/flol3622/stock_solver stock-solver
 ```
+
+Downloads the app and all dependencies into an isolated environment and opens it in your browser automatically.
+
+---
+
+## 📖 How to Use
+
+| Step | What to do |
+|------|------------|
+| 1 | **Available Stock** — enter bar types: name, profile dimensions (`l1 × l2` in mm), bar length, cost per bar. Add / remove rows freely. |
+| 2 | **Required Parts** — enter each part: name, profile (dropdown from your stock table), length in mm, quantity. |
+| 3 | **▶ Optimise** — the solver assigns parts to bars and minimises total purchase cost. |
+| 4 | Review KPI metrics, the cutting plan table, and the Gantt-style bar chart. |
+| 5 | Download per-profile **vector PDFs** for workshop use. |
+
+### 💾 Save & load your data
+
+Expand the **Load / Save** section at any time to:
+
+- **Download** all inputs as a single CSV for reuse.
+- **Upload** a saved CSV — choose *Replace all* or *Add rows* to your current tables.
+
+**CSV format:**
+
+```csv
 section,name,profile,length_mm,cost_per_bar,quantity
 stock,HEA200_6m,200x200,6000,42.5,
 part,beam_A,200x200,2400,,3
@@ -35,7 +56,7 @@ Profiles can be written as `200x200` or `200×200`.
 
 ---
 
-## For Developers
+## 🛠️ For Developers
 
 ### Project structure
 
@@ -45,15 +66,13 @@ stock_solver/
 ├── solver.py       # OR-Tools CP-SAT optimisation logic
 ├── chart.py        # Matplotlib cutting plan charts
 ├── data.py         # Default data, CSV helpers, profile utilities
-├── pyproject.toml  # UV project / dependency manifest
-├── README.md
+├── _cli.py         # uvx / console-script entry point
+├── pyproject.toml  # uv project & dependency manifest
 └── .streamlit/
-    └── config.toml # Streamlit theme and server settings
+    └── config.toml # Theme and server settings
 ```
 
-### Run locally
-
-Requires [uv](https://docs.astral.sh/uv/).
+### Run from source
 
 ```bash
 git clone https://github.com/flol3622/stock_solver
@@ -61,39 +80,32 @@ cd stock_solver
 uv run streamlit run app.py
 ```
 
-`uv` will create a virtual environment and install all dependencies automatically on first run.
-
-### One-liner from GitHub (no clone)
-
-```bash
-uvx --from git+https://github.com/flol3622/stock_solver stock-solver
-```
-
-`uvx` installs the package (and all dependencies) into a temporary isolated environment, then launches the app — no clone, no manual install needed.
+`uv` creates a virtual environment and installs all dependencies on first run.
 
 ### Deploy on Streamlit Cloud
 
-Deployed at [stocksolver-1d.streamlit.app](https://stocksolver-1d.streamlit.app/) from the `main` branch of [github.com/flol3622/stock_solver](https://github.com/flol3622/stock_solver).
+The live app runs from the `main` branch of [github.com/flol3622/stock_solver](https://github.com/flol3622/stock_solver).
 
-To redeploy from your own fork:
-1. Fork the repository on GitHub.
+To deploy your own fork:
+
+1. Fork the repo on GitHub.
 2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
-3. Select your fork, branch `main`, and set **Main file path** to `app.py`.
-4. Click **Deploy**. Streamlit Cloud reads `pyproject.toml` to install dependencies automatically.
+3. Select your fork, branch `main`, entry point `app.py`.
+4. **Deploy** — Streamlit Cloud reads `pyproject.toml` to install dependencies.
 
-### Add / update dependencies
+### Manage dependencies
 
 ```bash
-uv add <package>      # add a runtime dependency
-uv add --dev <package> # add a dev-only dependency
+uv add <package>        # add a runtime dependency
+uv add --dev <package>  # add a dev-only dependency
 ```
 
 ### Key design decisions
 
 | Concern | Approach |
-|---|---|
-| Optimisation | CP-SAT per profile group (exact, small instances < 1 s) |
-| Profile matching | Exact `(l1, l2)` tuple equality — no fuzzy matching |
-| Cost representation | Integer cents inside CP-SAT to avoid float domains |
-| Upload deduplication | `(filename, size)` fingerprint in session state prevents rerun loops |
-| Chart display | `st.image` with 200 DPI PNG for crisp browser preview; PDF export is vector |
+|---------|----------|
+| Optimisation | CP-SAT per profile group — exact, typically < 1 s |
+| Profile matching | Exact `(l1, l2)` tuple equality |
+| Cost representation | Integer cents inside CP-SAT (no float domains) |
+| Upload deduplication | `(filename, size)` fingerprint prevents rerun loops |
+| Chart display | `st.image` at 200 DPI for sharp browser preview; PDF export is vector |
