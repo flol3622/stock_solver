@@ -212,8 +212,8 @@ if st.button("▶ Optimise", type="primary"):
     st.divider()
 
     st.subheader("Full Cutting Plan")
-    fig_all = draw_cutting_plan(all_results, part_color, dpi=150)
-    st.image(fig_to_png(fig_all), use_container_width=True)
+    fig_all = draw_cutting_plan(all_results, part_color)
+    st.image(fig_to_png(fig_all, dpi=400), width='stretch')
     st.download_button(
         "Download Full Plan as PDF",
         data=fig_to_pdf(fig_all),
@@ -236,9 +236,9 @@ if st.button("▶ Optimise", type="primary"):
         ):
             fig_p = draw_cutting_plan(
                 group_bars, part_color,
-                title_prefix=f"Profile {prof_label}  - ", dpi=150,
+                title_prefix=f"Profile {prof_label}  - ",
             )
-            st.image(fig_to_png(fig_p), use_container_width=True)
+            st.image(fig_to_png(fig_p, dpi=400), width='stretch')
             st.download_button(
                 f"Download Profile {prof_label} as PDF",
                 data=fig_to_pdf(fig_p),
