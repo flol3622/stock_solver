@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from chart import build_color_map, draw_cutting_plan, fig_to_pdf, fig_to_png
+from utils import sort_and_renumber
 from data import (
     DEFAULT_PARTS,
     DEFAULT_STOCKS,
@@ -181,6 +182,7 @@ if st.button("▶ Optimise", type="primary"):
             bar["bar_no"] = len(all_results) + 1
             all_results.append(bar)
     progress.progress(1.0, text="Done")
+    all_results = sort_and_renumber(all_results)
 
     total_cost  = sum(b["cost"]      for b in all_results)
     total_waste = sum(b["waste_mm"]  for b in all_results)
