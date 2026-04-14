@@ -40,6 +40,8 @@ if "parts_df" not in st.session_state:
     st.session_state.parts_df = DEFAULT_PARTS.copy()
 if "editor_ver" not in st.session_state:
     st.session_state.editor_ver = 0
+if "results" not in st.session_state:
+    st.session_state.results = None  # (all_results, part_color, profiles)
 
 # ── Input tables ──────────────────────────────────────────────────────────────
 col_stock, col_parts = st.columns(2)
@@ -166,7 +168,7 @@ if st.button("▶ Optimise", type="primary"):
     part_color = build_color_map(sorted(parts["name"].unique()))
 
     all_results = []
-    profiles    = parts["profile"].unique()
+    profiles    = list(parts["profile"].unique())
 
     progress = st.progress(0, text="Solving...")
     for idx, prof in enumerate(profiles):
@@ -183,6 +185,12 @@ if st.button("▶ Optimise", type="primary"):
             all_results.append(bar)
     progress.progress(1.0, text="Done")
     all_results = sort_and_renumber(all_results)
+
+    st.session_state.results = (all_results, part_color, profiles)
+
+# ── Results ───────────────────────────────────────────────────────────────────
+if st.session_state.results is not None:
+    all_results, part_color, profiles = st.session_state.results
 
     total_cost  = sum(b["cost"]      for b in all_results)
     total_waste = sum(b["waste_mm"]  for b in all_results)
