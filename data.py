@@ -18,25 +18,25 @@ DEFAULT_STOCKS = pd.DataFrame([
 ])
 
 DEFAULT_PARTS = pd.DataFrame([
-    {"name": "beam_A",   "profile": "200×200", "length_mm": 2400, "quantity": 3},
-    {"name": "beam_B",   "profile": "200×200", "length_mm": 1800, "quantity": 4},
-    {"name": "column_C", "profile": "150×300", "length_mm": 3200, "quantity": 2},
-    {"name": "column_D", "profile": "150×300", "length_mm": 900,  "quantity": 5},
-    {"name": "brace_E",  "profile": "100×100", "length_mm": 1100, "quantity": 6},
-    {"name": "brace_F",  "profile": "100×100", "length_mm": 750,  "quantity": 4},
+    {"name": "beam_A",   "profile": "200x200", "length_mm": 2400, "quantity": 3},
+    {"name": "beam_B",   "profile": "200x200", "length_mm": 1800, "quantity": 4},
+    {"name": "column_C", "profile": "150x300", "length_mm": 3200, "quantity": 2},
+    {"name": "column_D", "profile": "150x300", "length_mm": 900,  "quantity": 5},
+    {"name": "brace_E",  "profile": "100x100", "length_mm": 1100, "quantity": 6},
+    {"name": "brace_F",  "profile": "100x100", "length_mm": 750,  "quantity": 4},
 ])
 
 
 # ── Profile string helpers ────────────────────────────────────────────────────
 def split_profile(s: str) -> tuple[int, int]:
-    """Parse '200×300' (or '200x300') into (200, 300)."""
-    s = str(s).replace("x", "×").replace("X", "×")
-    a, b = s.split("×")
+    """Parse '200x300' (or '200×300') into (200, 300)."""
+    s = str(s).replace("×", "x").replace("X", "x")
+    a, b = s.split("x")
     return int(a), int(b)
 
 
 def profile_str(l1: int, l2: int) -> str:
-    return f"{l1}×{l2}"
+    return f"{l1}x{l2}"
 
 
 # ── Combined CSV build / parse ────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def parse_combined_csv(text: str) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     parts_out = pd.DataFrame({
         "name":      p_rows["name"].values,
-        "profile":   p_rows["profile"].values,
+        "profile":   [profile_str(*split_profile(p)) for p in p_rows["profile"]],
         "length_mm": p_rows["length_mm"].astype(int).values,
         "quantity":  p_rows["quantity"].astype(int).values,
     })
