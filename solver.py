@@ -8,10 +8,41 @@ Each profile group is solved independently. Decision variables:
 
 Objective: minimise total purchase cost of used bars.
 """
-import math
-
 import pandas as pd
 from ortools.sat.python import cp_model
+
+
+def _piece_label(group_pieces: pd.DataFrame, piece_idx: int) -> str:
+    if "piece_id" in group_pieces.columns:
+        return str(group_pieces.at[piece_idx, "piece_id"])
+    return str(group_pieces.at[piece_idx, "name"])
+
+
+def _greedy_bar_slot_upper_bound(piece_lengths: list[int], stock_lengths: list[int]) -> int:
+    """Return a feasible bar-count bound using the longest stock length."""
+    max_stock_length = max(stock_lengths)
+    remaining_by_bar: list[int] = []
+
+    for piece_length in sorted(piece_lengths, reverse=True):
+        best_bar = None
+        best_remaining_after_cut = None
+
+        for bar, remaining in enumerate(remaining_by_bar):
+            if piece_length <= remaining:
+                remaining_after_cut = remaining - piece_length
+                if (
+                    best_remaining_after_cut is None
+                    or remaining_after_cut < best_remaining_after_cut
+                ):
+                    best_bar = bar
+                    best_remaining_after_cut = remaining_after_cut
+
+        if best_bar is None:
+            remaining_by_bar.append(max_stock_length - piece_length)
+        else:
+            remaining_by_bar[best_bar] -= piece_length
+
+    return len(remaining_by_bar)
 
 
 def solve_profile_group(
@@ -42,8 +73,42 @@ def solve_profile_group(
     s_cost = {i: int(round(group_stocks.at[i, "cost_per_bar"] * 100)) for i in s_idx}
     p_len  = {j: int(group_pieces.at[j, "length_mm"])                 for j in p_idx}
 
-    # Upper bound: in the worst case every piece needs a separate bar of each type
-    max_bars       = sum(math.ceil(sum(p_len.values()) / s_len[i]) for i in s_idx)
+    if not s_idx:
+        raise RuntimeError(f"No stock for profile {profile}")
+    if not p_idx:
+        return []
+
+    max_stock_length = max(s_len.values())
+    oversized = [j for j in p_idx if p_len[j] > max_stock_length]
+    if oversized:
+        sample = ", ".join(
+            f"{_piece_label(group_pieces, j)} ({p_len[j]} mm)"
+            for j in oversized[:5]
+        )
+        if len(oversized) > 5:
+            sample += f", and {len(oversized) - 5} more"
+        raise RuntimeError(
+            f"Piece(s) too long for profile {profile}: {sample}. "
+            f"Longest stock is {max_stock_length} mm."
+        )
+
+    # The old total-length estimate can be too small for bin packing. Start from
+    # a known feasible solution using the longest stock, then allow any larger
+    # bar count that could still beat that solution on cost.
+    greedy_bars = _greedy_bar_slot_upper_bound(list(p_len.values()), list(s_len.values()))
+    cheapest_longest_stock = min(
+        s_cost[i] for i in s_idx
+        if s_len[i] == max_stock_length
+    )
+    min_bar_cost = min(s_cost.values())
+    if min_bar_cost > 0:
+        max_bars = min(
+            len(p_idx),
+            max(greedy_bars, greedy_bars * cheapest_longest_stock // min_bar_cost),
+        )
+    else:
+        max_bars = len(p_idx)
+
     s_lengths_list = [s_len[i] for i in s_idx]
     s_costs_list   = [s_cost[i] for i in s_idx]
 
@@ -58,6 +123,10 @@ def solve_profile_group(
     # Each piece assigned to exactly one bar
     for j in p_idx:
         model.add(sum(x[b, j] for b in range(max_bars)) == 1)
+
+    # Bar slots are interchangeable, so pack used bars toward the front.
+    for b in range(max_bars - 1):
+        model.add(y[b] >= y[b + 1])
 
     # Length feasibility + bar-used indicator
     for b in range(max_bars):
