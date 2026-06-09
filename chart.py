@@ -5,6 +5,7 @@ import io
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -111,6 +112,40 @@ def fig_to_pdf(fig: plt.Figure) -> bytes:
     """Render figure to a vector PDF byte string."""
     buf = io.BytesIO()
     fig.savefig(buf, format="pdf", bbox_inches="tight")
+    buf.seek(0)
+    return buf.read()
+
+
+def fig_to_printable_pdf(
+    results: list[dict],
+    part_color: dict,
+    title_prefix: str = "",
+    bars_per_page: int = 8,
+) -> bytes:
+    """
+    Render a printable, multi-page PDF with at most ``bars_per_page`` bars per
+    page, each page in landscape (A4) orientation.
+
+    Parameters
+    ----------
+    results       : list of bar dicts (from solver.solve_profile_group)
+    part_color    : name → RGBA mapping (from build_color_map)
+    title_prefix  : prepended to each page title
+    bars_per_page : maximum number of bars drawn on a single page
+    """
+    # A4 landscape in inches.
+    page_w, page_h = 11.69, 8.27
+    n_pages = max(1, -(-len(results) // bars_per_page))  # ceil division
+
+    buf = io.BytesIO()
+    with PdfPages(buf) as pdf:
+        for page_idx in range(n_pages):
+            chunk = results[page_idx * bars_per_page:(page_idx + 1) * bars_per_page]
+            page_prefix = f"{title_prefix}Page {page_idx + 1}/{n_pages}  -  "
+            fig = draw_cutting_plan(chunk, part_color, title_prefix=page_prefix)
+            fig.set_size_inches(page_w, page_h)
+            pdf.savefig(fig, bbox_inches="tight")
+            plt.close(fig)
     buf.seek(0)
     return buf.read()
 

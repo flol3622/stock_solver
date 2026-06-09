@@ -8,7 +8,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from chart import build_color_map, draw_cutting_plan, fig_to_pdf, fig_to_png
+from chart import (
+    build_color_map,
+    draw_cutting_plan,
+    fig_to_pdf,
+    fig_to_png,
+    fig_to_printable_pdf,
+)
 from utils import sort_and_renumber
 from data import (
     DEFAULT_PARTS,
@@ -224,12 +230,20 @@ if st.session_state.results is not None:
     st.subheader("Full Cutting Plan")
     fig_all = draw_cutting_plan(all_results, part_color)
     st.image(fig_to_png(fig_all, dpi=400), width='stretch')
-    st.download_button(
+    dl_full, dl_full_print = st.columns(2)
+    dl_full.download_button(
         "Download Full Plan as PDF",
         data=fig_to_pdf(fig_all),
         file_name="cutting_plan_full.pdf",
         mime="application/pdf",
         key="pdf_full",
+    )
+    dl_full_print.download_button(
+        "🖨 Export Printable PDF (8 bars/page)",
+        data=fig_to_printable_pdf(all_results, part_color),
+        file_name="cutting_plan_full_printable.pdf",
+        mime="application/pdf",
+        key="pdf_full_print",
     )
     plt.close(fig_all)
 
@@ -249,11 +263,22 @@ if st.session_state.results is not None:
                 title_prefix=f"Profile {prof_label}  - ",
             )
             st.image(fig_to_png(fig_p, dpi=400), width='stretch')
-            st.download_button(
+            dl_prof, dl_prof_print = st.columns(2)
+            dl_prof.download_button(
                 f"Download Profile {prof_label} as PDF",
                 data=fig_to_pdf(fig_p),
                 file_name=f"cutting_plan_{prof_label}.pdf",
                 mime="application/pdf",
                 key=f"pdf_{prof_label}",
+            )
+            dl_prof_print.download_button(
+                "🖨 Export Printable PDF (8 bars/page)",
+                data=fig_to_printable_pdf(
+                    group_bars, part_color,
+                    title_prefix=f"Profile {prof_label}  - ",
+                ),
+                file_name=f"cutting_plan_{prof_label}_printable.pdf",
+                mime="application/pdf",
+                key=f"pdf_{prof_label}_print",
             )
             plt.close(fig_p)
