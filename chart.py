@@ -6,6 +6,9 @@ import io
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import FuncFormatter
+
+from utils import format_length, to_display
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,6 +29,8 @@ def draw_cutting_plan(
     part_color: dict,
     title_prefix: str = "",
     dpi: int = 150,
+    unit: str = "mm",
+    decimals: int = 0,
 ) -> plt.Figure:
     """
     Draw a horizontal Gantt-style cutting plan.
@@ -36,6 +41,8 @@ def draw_cutting_plan(
     part_color  : name → RGBA mapping (from build_color_map)
     title_prefix: prepended to the chart title
     dpi         : figure resolution (screen rendering)
+    unit        : display unit for lengths ("mm", "cm", "m")
+    decimals    : decimal places used when formatting lengths
     """
     WASTE_COLOR = "#e0e0e0"
     n_bars      = len(results)
@@ -59,7 +66,7 @@ def draw_cutting_plan(
             short_id = piece_id.split("_")[-1]
             ax.text(
                 x_cursor + piece_len / 2, y_bot + bar_h / 2,
-                f"{piece_name}\n({short_id})  {piece_len} mm",
+                f"{piece_name}\n({short_id})  {format_length(piece_len, unit, decimals)}",
                 ha="center", va="center", fontsize=7,
                 color="white" if _is_dark(color) else "#333",
                 fontweight="bold", clip_on=True,
@@ -75,7 +82,7 @@ def draw_cutting_plan(
             if b["waste_mm"] > 0.04 * bar_len:
                 ax.text(
                     x_cursor + b["waste_mm"] / 2, y_bot + bar_h / 2,
-                    f"waste\n{b['waste_mm']} mm",
+                    f"waste\n{format_length(b['waste_mm'], unit, decimals)}",
                     ha="center", va="center", fontsize=7, color="#666",
                 )
 
@@ -93,7 +100,11 @@ def draw_cutting_plan(
 
     ax.set_xlim(-max_len * 0.18, max_len * 1.02)
     ax.set_ylim(-gap, n_bars * row_h)
-    ax.set_xlabel("Length (mm)", fontsize=9)
+    ax.set_xlabel(f"Length ({unit})", fontsize=9)
+    # Axis coordinates stay in mm; relabel ticks in the chosen display unit.
+    ax.xaxis.set_major_formatter(
+        FuncFormatter(lambda x, _pos: f"{to_display(x, unit):,.{decimals}f}")
+    )
     ax.set_title(
         f"{title_prefix}Cutting plan — {n_bars} bar(s)  |  "
         f"Total cost €{total_cost:.2f}  |  "
@@ -121,6 +132,8 @@ def fig_to_printable_pdf(
     part_color: dict,
     title_prefix: str = "",
     bars_per_page: int = 8,
+    unit: str = "mm",
+    decimals: int = 0,
 ) -> bytes:
     """
     Render a printable, multi-page PDF with at most ``bars_per_page`` bars per
@@ -132,6 +145,8 @@ def fig_to_printable_pdf(
     part_color    : name → RGBA mapping (from build_color_map)
     title_prefix  : prepended to each page title
     bars_per_page : maximum number of bars drawn on a single page
+    unit          : display unit for lengths ("mm", "cm", "m")
+    decimals      : decimal places used when formatting lengths
     """
     # A4 landscape in inches.
     page_w, page_h = 11.69, 8.27
@@ -142,7 +157,10 @@ def fig_to_printable_pdf(
         for page_idx in range(n_pages):
             chunk = results[page_idx * bars_per_page:(page_idx + 1) * bars_per_page]
             page_prefix = f"{title_prefix}Page {page_idx + 1}/{n_pages}  -  "
-            fig = draw_cutting_plan(chunk, part_color, title_prefix=page_prefix)
+            fig = draw_cutting_plan(
+                chunk, part_color, title_prefix=page_prefix,
+                unit=unit, decimals=decimals,
+            )
             fig.set_size_inches(page_w, page_h)
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)

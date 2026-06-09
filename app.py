@@ -15,7 +15,7 @@ from chart import (
     fig_to_png,
     fig_to_printable_pdf,
 )
-from utils import sort_and_renumber
+from utils import DISPLAY_UNITS, format_length, sort_and_renumber
 from data import (
     DEFAULT_PARTS,
     DEFAULT_STOCKS,
@@ -136,7 +136,20 @@ with st.expander("📂 Load / Save Inputs"):
 
 st.divider()
 
-# ── Optimise ──────────────────────────────────────────────────────────────────
+# ── Display settings + Optimise ───────────────────────────────────────────────
+# Inputs are always entered in mm; the unit/decimals only affect how results
+# are displayed.
+unit_col, dec_col = st.columns(2)
+with unit_col:
+    disp_unit = st.selectbox(
+        "Length unit",
+        list(DISPLAY_UNITS.keys()),
+        index=0,
+        help="Inputs are always in mm; this changes how results are displayed.",
+    )
+with dec_col:
+    disp_decimals = st.slider("Decimal places", min_value=0, max_value=3, value=0)
+
 if st.button("▶ Optimise", type="primary"):
 
     stocks = stocks_input.copy().dropna(subset=["name"]).reset_index(drop=True)
@@ -204,8 +217,8 @@ if st.session_state.results is not None:
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Bars used",      len(all_results))
-    k2.metric("Total material", f"{total_mat:,} mm")
-    k3.metric("Total waste",    f"{total_waste:,} mm  ({100*total_waste/total_mat:.1f}%)")
+    k2.metric("Total material", format_length(total_mat, disp_unit, disp_decimals))
+    k3.metric("Total waste",    f"{format_length(total_waste, disp_unit, disp_decimals)}  ({100*total_waste/total_mat:.1f}%)")
     k4.metric("Total cost",     f"EUR {total_cost:.2f}")
 
     st.divider()
@@ -213,14 +226,17 @@ if st.session_state.results is not None:
     st.subheader("Cutting Plan Summary")
     rows = []
     for b in all_results:
-        cuts_str = ", ".join(f"{pid} ({pl} mm)" for pid, _, pl in b["cuts"])
+        cuts_str = ", ".join(
+            f"{pid} ({format_length(pl, disp_unit, disp_decimals)})"
+            for pid, _, pl in b["cuts"]
+        )
         rows.append({
             "Bar #":    b["bar_no"],
             "Profile":  f"{b['profile'][0]}x{b['profile'][1]}",
             "Stock":    b["stock_name"],
-            "Length":   f"{b['length_mm']} mm",
+            "Length":   format_length(b["length_mm"], disp_unit, disp_decimals),
             "Cuts":     cuts_str,
-            "Waste":    f"{b['waste_mm']} mm  ({100*b['waste_mm']/b['length_mm']:.1f}%)",
+            "Waste":    f"{format_length(b['waste_mm'], disp_unit, disp_decimals)}  ({100*b['waste_mm']/b['length_mm']:.1f}%)",
             "Cost":     f"{b['cost']:.2f}",
         })
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
@@ -228,7 +244,7 @@ if st.session_state.results is not None:
     st.divider()
 
     st.subheader("Full Cutting Plan")
-    fig_all = draw_cutting_plan(all_results, part_color)
+    fig_all = draw_cutting_plan(all_results, part_color, unit=disp_unit, decimals=disp_decimals)
     st.image(fig_to_png(fig_all, dpi=400), width='stretch')
     dl_full, dl_full_print = st.columns(2)
     dl_full.download_button(
@@ -240,7 +256,7 @@ if st.session_state.results is not None:
     )
     dl_full_print.download_button(
         "🖨 Export Printable PDF (8 bars/page)",
-        data=fig_to_printable_pdf(all_results, part_color),
+        data=fig_to_printable_pdf(all_results, part_color, unit=disp_unit, decimals=disp_decimals),
         file_name="cutting_plan_full_printable.pdf",
         mime="application/pdf",
         key="pdf_full_print",
@@ -261,6 +277,7 @@ if st.session_state.results is not None:
             fig_p = draw_cutting_plan(
                 group_bars, part_color,
                 title_prefix=f"Profile {prof_label}  - ",
+                unit=disp_unit, decimals=disp_decimals,
             )
             st.image(fig_to_png(fig_p, dpi=400), width='stretch')
             dl_prof, dl_prof_print = st.columns(2)
@@ -276,6 +293,7 @@ if st.session_state.results is not None:
                 data=fig_to_printable_pdf(
                     group_bars, part_color,
                     title_prefix=f"Profile {prof_label}  - ",
+                    unit=disp_unit, decimals=disp_decimals,
                 ),
                 file_name=f"cutting_plan_{prof_label}_printable.pdf",
                 mime="application/pdf",
